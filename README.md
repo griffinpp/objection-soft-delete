@@ -177,7 +177,7 @@ await User.query().upsertGraph({
 You can specify different column names per-model by using the options:
 ```js
 const softDelete = require('objection-soft-delete')({
-  columnName: inactive,
+  columnName: 'inactive',
 });
 ```
 
@@ -187,3 +187,8 @@ Tests can be run with:
 ```sh
 npm test
 ```
+
+
+## Contributing
+
+The usual spiel: fork, fix/improve, write tests, submit PR.  I try to maintain a (mostly) consistent syntax, but am open to suggestions for improvement. Otherwise, the only two rules are: do good work, and no tests = no merge.

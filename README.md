@@ -1,4 +1,5 @@
 [![CircleCI](https://circleci.com/gh/griffinpp/objection-soft-delete/tree/master.svg?style=shield)](https://circleci.com/gh/griffinpp/objection-soft-delete/tree/master)
+[![Coverage Status](https://coveralls.io/repos/github/griffinpp/objection-soft-delete/badge.svg?branch=master)](https://coveralls.io/github/griffinpp/objection-soft-delete?branch=master)
 
 # objection-soft-delete
 A plugin that adds soft-delete functionality to [Objection.js](https://github.com/Vincit/objection.js/)

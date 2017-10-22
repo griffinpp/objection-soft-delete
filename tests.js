@@ -1,5 +1,3 @@
-'use strict';
-
 const sutFactory = require('./index');
 const Model = require('objection').Model;
 const Knex = require('knex');

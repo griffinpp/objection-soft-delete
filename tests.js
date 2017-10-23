@@ -1,3 +1,5 @@
+'use strict' // eslint-disable-line
+
 const sutFactory = require('./index');
 // eslint-disable-next-line
 const Model = require('objection').Model;

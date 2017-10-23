@@ -1,3 +1,5 @@
+'use strict' // eslint-disable-line
+
 module.exports = (incomingOptions) => {
   const options = Object.assign({
     columnName: 'deleted',

@@ -26,14 +26,11 @@ yarn add objection-soft-delete
 // Import objection model.
 const Model = require('objection').Model;
 
-// Import the plugin and specify the column to use.
-const softDelete = require('objection-soft-delete')({
-  // 'deleted' will be used by default if no options are passed, but is shown here for clarity
-  columnName: 'deleted',
-});
+// Import the plugin
+const softDelete = require('objection-soft-delete');
 
-// Mixin the plugin.
-class User extends softDelete(Model) {
+// Mixin the plugin and specify the column to to use.  'deleted' will be used if none is specified:
+class User extends softDelete({ columnName: 'deleted' })(Model) {
   static get tableName() {
     return 'Users';
   }
@@ -91,9 +88,9 @@ await User.query().where('id', 1).undelete();
 await User.query.where('id', 1).hardDelete(); // => row with id:1 is permanently deleted
 ```
 
-### Filtering out deleted/undeleted records in eagerly loaded models
+### Filtering out deleted/undeleted records in eagerly loaded models or `.joinRelation`
 
-#### Using the named filter
+#### Using the named filters
 A `notDeleted` and a `deleted` filter will be added to the list of named filters for any model that mixes in the plugin.  These filters use the `.whereNotDeleted()` and `.whereDeleted()` functions to filter records, and can be used without needing to remember the specific columnName for any model:
 ```js
 // some other Model with a relation to the `User` model:
@@ -112,8 +109,17 @@ const group = await UserGroup.query()
   .eager('users(deleted)'); // => now group.users contains only records that are deleted
 ```
 
+With `.joinRelation()`:
+```js
+// some other Model with a relation to the `User` model:
+const group = await UserGroup.query()
+  .where('id', 1)
+  .joinRelation('users(notDeleted)')
+  .where('users.firstName', 'like', 'a%'); // => all groups that have an undeleted user whose first name starts with 'a';
+```
+
 #### Using a relationship filter
-As another option, a filter can be applied directly to the relationship definition to ensure that deleted/undeleted rows never appear:
+A filter can be applied directly to the relationship definition to ensure that deleted/undeleted rows never appear:
 ```js
 // some other class that has a FK to User:
 class UserGroup extends Model {
@@ -137,7 +143,7 @@ class UserGroup extends Model {
           to: 'Users.id',
         },
         filter: (f) => {
-          f.whereNotDeleted(); // or f.whereDeleted(), as needed
+          f.whereNotDeleted(); // or f.whereDeleted(), as needed.
         },
       },
     }
@@ -150,7 +156,42 @@ then:
 const group = await UserGroup.query()
   .where('id', 1)
   .first()
-  .eager('users'); // => deleted `User` rows are filtered out automatically without having to specify the filter here
+  .eager('users'); // => `User` rows are filtered out automatically without having to specify the filter here
+```
+
+### Per-model `columnName`
+If for some reason you have to deal with different column names for different models (legacy code/schemas can be a bear!), all functionality is fully supported:
+```js
+class User extends softDelete({ columnName: 'deleted' })(Model) {
+  ...
+}
+
+class UserGroup extends softDelete({ columnName: 'inactive' })(Model) {
+  ...
+}
+
+// everything will work as expected:
+await User.query()
+  .whereNotDeleted(); // => all undeleted users
+
+await UserGroup.query()
+  .whereNotDeleted(); // => all undeleted user groups
+
+await UserGroup.query()
+  .whereNotDeleted()
+  .eager('users(notDeleted)'); // => all undeleted user groups, with all related undeleted users eagerly loaded
+
+await User.query()
+  .whereDeleted()
+  .eager('groups(deleted)'); // => all deleted users, with all related deleted user groups eagerly loaded
+
+await User.query()
+  .whereNotDeleted()
+  .joinRelation('groups(notDeleted)')
+  .where('groups.name', 'like', '%local%')
+  .eager('groups(notDeleted)'); // => all undeleted users that belong to undeleted user groups that have a name containing the string 'local', eagerly load all undeleted groups for said users.
+
+// and so on...
 ```
 
 ### Using with `.graphUpsert()`

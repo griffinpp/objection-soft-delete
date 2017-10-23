@@ -38,6 +38,7 @@ describe('Soft Delete plugin tests', () => {
     .createTable('RelatedObjects', (table) => {
       table.increments('id').primary();
       table.string('name');
+      table.boolean('deleted');
     })
     .createTable('JoinTable', (table) => {
       table.increments('id').primary();
@@ -82,6 +83,7 @@ describe('Soft Delete plugin tests', () => {
         {
           id: 1,
           name: 'RelatedObject 1',
+          deleted: 0,
         },
       ]);
     })
@@ -512,6 +514,50 @@ describe('Soft Delete plugin tests', () => {
           expect(result.testObjects.length).to.equal(1, 'eager returns not filtered properly');
           expect(result.testObjects[0].id).to.equal(1, 'wrong result returned');
         });
+    });
+  });
+
+  describe('models with different columnNames', () => {
+    it('should use the correct columnName for each model', () => {
+      const TestObject = getModel({ columnName: 'inactive' });
+
+      // define the relationship to the TestObjects table
+      const RelatedObject = class RelatedObject extends sutFactory()(Model) {
+        static get tableName() {
+          return 'RelatedObjects';
+        }
+
+        static get relationMappings() {
+          return {
+            testObjects: {
+              relation: Model.ManyToManyRelation,
+              modelClass: TestObject,
+              join: {
+                from: 'RelatedObjects.id',
+                through: {
+                  from: 'JoinTable.relatedObjectId',
+                  to: 'JoinTable.testObjectId',
+                },
+                to: 'TestObjects.id',
+              },
+            },
+          }
+        }
+      };
+
+      return TestObject.query(knex)
+        .where('id', 1)
+        .del()
+        .then(() => {
+          return RelatedObject.query(knex)
+            .whereNotDeleted()
+            .eager('testObjects(notDeleted)');
+        })
+        .then((result) => {
+          expect(result[0].deleted).to.equal(0, 'deleted row included in base result');
+          expect(result[0].testObjects.length).to.equal(1, 'wrong number of eager relations loaded');
+          expect(result[0].testObjects[0].inactive).to.equal(0, 'deleted row included in eager relations');
+        })
     });
   });
 });

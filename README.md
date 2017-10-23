@@ -26,7 +26,7 @@ yarn add objection-soft-delete
 // Import objection model.
 const Model = require('objection').Model;
 
-// Import the plugin.
+// Import the plugin and specify the column to use.
 const softDelete = require('objection-soft-delete')({
   // 'deleted' will be used by default if no options are passed, but is shown here for clarity
   columnName: 'deleted',

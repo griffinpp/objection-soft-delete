@@ -105,7 +105,7 @@ describe('Soft Delete plugin tests', () => {
       .then(() => { return knex('RelatedObjects').delete(); });
   })
 
-  describe('when .delete() or .del() is called', () => {
+  describe('.delete() or .del()', () => {
     describe('when a columnName was specified', () => {
       it('should set that columnName to true for any matching records', () => {
         const TestObject = getModel({ columnName: 'inactive' });
@@ -142,7 +142,7 @@ describe('Soft Delete plugin tests', () => {
     });
   });
 
-  describe('when .hardDelete() is called', () => {
+  describe('.hardDelete()', () => {
     it('should delete the row from the database', () => {
       const TestObject = getModel({ columnName: 'inactive' });
 
@@ -160,8 +160,117 @@ describe('Soft Delete plugin tests', () => {
     });
   });
 
-  describe('when the notDeleted filter is used in the .eager() function', () => {
-    it('should exclude any records that have been flagged on the configured column', () => {
+  describe('.undelete()', () => {
+    it('should set the configured delete column to false for any matching records', () => {
+      const TestObject = getModel();
+
+      // soft delete the row
+      return TestObject.query(knex)
+        .where('id', 1)
+        .del()
+        .then(() => {
+          // now undelete the previously deleted row
+          return TestObject.query(knex)
+            .where('id', 1)
+            .undelete();
+        })
+        .then(() => {
+          // and verify
+          return TestObject.query(knex)
+            .where('id', 1)
+            .first();
+        })
+        .then((result) => {
+          expect(result.deleted).to.equal(0);
+        });
+    });
+  });
+
+  describe('.whereNotDeleted()', () => {
+    it('should cause deleted rows to be filterd out of the main result set', () => {
+      const TestObject = getModel();
+
+      return TestObject.query(knex)
+        .where('id', 1)
+        .del()
+        .then(() => {
+          return TestObject.query(knex)
+            .whereNotDeleted();
+        })
+        .then((result) => {
+          const anyDeletedExist = result.reduce((acc, obj) => {
+            return acc || obj.deleted === 1;
+          }, false)
+          expect(anyDeletedExist).to.equal(false, 'a deleted record was included in the result set');
+        });
+    });
+    it('should still work when a different columnName was specified', () => {
+      const TestObject = getModel({ columnName: 'inactive' });
+
+      return TestObject.query(knex)
+        .where('id', 1)
+        .del()
+        .then(() => {
+          return TestObject.query(knex)
+            .whereNotDeleted();
+        })
+        .then((result) => {
+          const anyDeletedExist = result.reduce((acc, obj) => {
+            return acc || obj.inactive === 1;
+          }, false)
+          expect(anyDeletedExist).to.equal(false, 'a deleted record was included in the result set');
+        });
+    });
+    it('should work as a relationship filter', () => {
+      const TestObject = getModel();
+
+      // define the relationship to the TestObjects table
+      const RelatedObject = class RelatedObject extends Model {
+        static get tableName() {
+          return 'RelatedObjects';
+        }
+
+        static get relationMappings() {
+          return {
+            testObjects: {
+              relation: Model.ManyToManyRelation,
+              modelClass: TestObject,
+              join: {
+                from: 'RelatedObjects.id',
+                through: {
+                  from: 'JoinTable.relatedObjectId',
+                  to: 'JoinTable.testObjectId',
+                },
+                to: 'TestObjects.id',
+              },
+              filter: (f) => {
+                f.whereNotDeleted();
+              }
+            },
+          }
+        }
+      };
+
+      return TestObject.query(knex)
+        .where('id', 1)
+        // soft delete one test object
+        .del()
+        .then(() => {
+          return RelatedObject.query(knex)
+            .where('id', 1)
+            // use the predefined filter
+            .eager('testObjects')
+            .first();
+        })
+        .then((result) => {
+          expect(result.testObjects.length).to.equal(1, 'eager returns not filtered properly');
+          expect(result.testObjects[0].id).to.equal(2, 'wrong result returned');
+        });
+    });
+  });
+
+  describe('the notDeleted filter', () => {
+    it('should exclude any records that have been flagged on the configured column when used in a .eager() function call', () => {
       const TestObject = getModel();
 
       // define the relationship to the TestObjects table
@@ -202,7 +311,7 @@ describe('Soft Delete plugin tests', () => {
         .then((result) => {
           expect(result.testObjects.length).to.equal(1, 'eager returns not filtered properly');
           expect(result.testObjects[0].id).to.equal(2, 'wrong result returned');
-        })
+        });
     });
   });
 });

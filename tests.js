@@ -341,6 +341,89 @@ describe('Soft Delete plugin tests', () => {
     });
   });
 
+  describe('.whereDeleted()', () => {
+    it('should cause only deleted rows to appear in the result set', () => {
+      const TestObject = getModel();
+
+      return TestObject.query(knex)
+        .where('id', 1)
+        .del()
+        .then(() => {
+          return TestObject.query(knex)
+            .whereDeleted();
+        })
+        .then((result) => {
+          const allDeleted = result.reduce((acc, obj) => {
+            return acc && obj.deleted === 1;
+          }, true)
+          expect(allDeleted).to.equal(true, 'an undeleted record was included in the result set');
+        });
+    });
+    it('should still work when a different columnName was specified', () => {
+      const TestObject = getModel({ columnName: 'inactive' });
+
+      return TestObject.query(knex)
+        .where('id', 1)
+        .del()
+        .then(() => {
+          return TestObject.query(knex)
+            .whereDeleted();
+        })
+        .then((result) => {
+          const allDeleted = result.reduce((acc, obj) => {
+            return acc && obj.inactive === 1;
+          }, true)
+          expect(allDeleted).to.equal(true, 'an undeleted record was included in the result set');
+        });
+    });
+    it('should work inside a relationship filter', () => {
+      const TestObject = getModel();
+
+      // define the relationship to the TestObjects table
+      const RelatedObject = class RelatedObject extends Model {
+        static get tableName() {
+          return 'RelatedObjects';
+        }
+
+        static get relationMappings() {
+          return {
+            testObjects: {
+              relation: Model.ManyToManyRelation,
+              modelClass: TestObject,
+              join: {
+                from: 'RelatedObjects.id',
+                through: {
+                  from: 'JoinTable.relatedObjectId',
+                  to: 'JoinTable.testObjectId',
+                },
+                to: 'TestObjects.id',
+              },
+              filter: (f) => {
+                f.whereDeleted();
+              }
+            },
+          }
+        }
+      };
+
+      return TestObject.query(knex)
+        .where('id', 1)
+        // soft delete one test object
+        .del()
+        .then(() => {
+          return RelatedObject.query(knex)
+            .where('id', 1)
+            // use the predefined filter
+            .eager('testObjects')
+            .first();
+        })
+        .then((result) => {
+          expect(result.testObjects.length).to.equal(1, 'eager returns not filtered properly');
+          expect(result.testObjects[0].id).to.equal(1, 'wrong result returned');
+        });
+    });
+  });
+
   describe('the notDeleted filter', () => {
     it('should exclude any records that have been flagged on the configured column when used in a .eager() function call', () => {
       const TestObject = getModel();
@@ -383,6 +466,51 @@ describe('Soft Delete plugin tests', () => {
         .then((result) => {
           expect(result.testObjects.length).to.equal(1, 'eager returns not filtered properly');
           expect(result.testObjects[0].id).to.equal(2, 'wrong result returned');
+        });
+    });
+  });
+  describe('the deleted filter', () => {
+    it('should only include any records that have been flagged on the configured column when used in a .eager() function call', () => {
+      const TestObject = getModel();
+
+      // define the relationship to the TestObjects table
+      const RelatedObject = class RelatedObject extends Model {
+        static get tableName() {
+          return 'RelatedObjects';
+        }
+
+        static get relationMappings() {
+          return {
+            testObjects: {
+              relation: Model.ManyToManyRelation,
+              modelClass: TestObject,
+              join: {
+                from: 'RelatedObjects.id',
+                through: {
+                  from: 'JoinTable.relatedObjectId',
+                  to: 'JoinTable.testObjectId',
+                },
+                to: 'TestObjects.id',
+              },
+            },
+          }
+        }
+      };
+
+      return TestObject.query(knex)
+        .where('id', 1)
+        // soft delete one test object
+        .del()
+        .then(() => {
+          return RelatedObject.query(knex)
+            .where('id', 1)
+            // use the predefined filter
+            .eager('testObjects(deleted)')
+            .first();
+        })
+        .then((result) => {
+          expect(result.testObjects.length).to.equal(1, 'eager returns not filtered properly');
+          expect(result.testObjects[0].id).to.equal(1, 'wrong result returned');
         });
     });
   });

@@ -26,9 +26,15 @@ module.exports = (options) => {
         return this.patch(patch);
       }
 
-      // provide a way to filter out deleted records without having to remember the column name every time
+      // provide a way to filter to ONLY deleted records without having to remember the column name
+      whereDeleted() {
+        // qualify the column name
+        return this.where(`${this._modelClass.tableName}.${options.columnName}`, true);
+      }
+
+      // provide a way to filter out deleted records without having to remember the column name
       whereNotDeleted() {
-        // use the tableName to avoid conflicts
+        // qualify the column name
         return this.where(`${this._modelClass.tableName}.${options.columnName}`, false);
       }
     }
@@ -45,6 +51,9 @@ module.exports = (options) => {
           notDeleted: (b) => {
             b.whereNotDeleted();
           },
+          deleted: (b) => {
+            b.whereDeleted();
+          }
         });
       }
     };

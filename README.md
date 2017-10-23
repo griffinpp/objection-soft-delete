@@ -54,41 +54,47 @@ class User extends softDelete(Model) {
 }
 ```
 
-### Now when `.delete()` or `.del()` is called, the matching row(s) will be flagged instead of deleted:
-Delete a User:
+### When `.delete()` or `.del()` is called for that model, the matching row(s) are flagged `true` instead of deleted
+#### Delete a User:
 ```js
-await User.query().where('id', 1).delete();
+await User.query().where('id', 1).delete(); // db now has: { User id: 1, deleted: true, ... }
 ```
 
-Or:
+#### Or:
 ```js
 const user = await User.query().where('id', 1).first();
-await user.$query().delete();
+await user.$query().delete(); // same
 ```
 
-You can still fetch deleted rows:
+#### Deleted rows are still in the db:
 ```js
-const deletedUser = await User.query().where('id', 1).first(); // => User { id: 1, deleted: true, ... }
+const deletedUser = await User.query().where('id', 1).first(); // => { User id: 1, deleted: true, ... }
 ```
 
-You can easily filter out deleted rows without needing to remember the specific columnName for the model:
+#### Filter out deleted rows without having to remember each model's "deleted" columnName:
 ```js
 const activeUsers = await User.query().whereNotDeleted();
 ```
-You can restore the row if desired:
+
+#### Get only deleted rows:
+```js
+const deletedUsers = await User.query().whereDeleted();
+```
+
+#### Restore row(s):
 ```js
 await User.query().where('id', 1).undelete();
 ```
 
-You can still remove the row from the db if desired:
+#### Permanently remove row(s) from the db:
 ```js
 await User.query.where('id', 1).hardDelete(); // => row with id:1 is permanently deleted
 ```
 
-### Filtering out deleted records in eagerly loaded models
+### Filtering out deleted/undeleted records in eagerly loaded models
 
 #### Using the named filter
-A `notDeleted` filter will be added to the list of named filters for any model that mixes in the plugin.  This filter uses the `.whereNotDeleted()` function to filter out deleted records, and can be used without needing to remember the specific columnName for any model:
+A `notDeleted` and a `deleted` filter will be added to the list of named filters for any model that mixes in the plugin.  These filters use the `.whereNotDeleted()` and `.whereDeleted()` functions to filter records, and can be used without needing to remember the specific columnName for any model:
 ```js
 // some other Model with a relation to the `User` model:
 const group = await UserGroup.query()
@@ -97,8 +103,17 @@ const group = await UserGroup.query()
   .eager('users(notDeleted)'); // => now group.users contains only records that are not deleted
 ```
 
+Or:
+```js
+// some other Model with a relation to the `User` model:
+const group = await UserGroup.query()
+  .where('id', 1)
+  .first()
+  .eager('users(deleted)'); // => now group.users contains only records that are deleted
+```
+
 #### Using a relationship filter
-As another option, a filter can be applied directly to the relationship definition to ensure that deleted rows never appear:
+As another option, a filter can be applied directly to the relationship definition to ensure that deleted/undeleted rows never appear:
 ```js
 // some other class that has a FK to User:
 class UserGroup extends Model {
@@ -122,7 +137,7 @@ class UserGroup extends Model {
           to: 'Users.id',
         },
         filter: (f) => {
-          f.whereNotDeleted(); // .whereNotDeleted() will use the correct columnName for the related model automatically
+          f.whereNotDeleted(); // or f.whereDeleted(), as needed
         },
       },
     }

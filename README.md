@@ -80,7 +80,7 @@ const deletedUsers = await User.query().whereDeleted();
 
 #### Restore row(s):
 ```js
-await User.query().where('id', 1).undelete();
+await User.query().where('id', 1).undelete(); // db now has: { User id: 1, deleted: false, ... }
 ```
 
 #### Permanently remove row(s) from the db:
@@ -88,7 +88,7 @@ await User.query().where('id', 1).undelete();
 await User.query.where('id', 1).hardDelete(); // => row with id:1 is permanently deleted
 ```
 
-### Filtering out deleted/undeleted records in eagerly loaded models or `.joinRelation`
+### Filtering out deleted/undeleted records in `.eager()` or `.joinRelation()`
 
 #### Using the named filters
 A `notDeleted` and a `deleted` filter will be added to the list of named filters for any model that mixes in the plugin.  These filters use the `.whereNotDeleted()` and `.whereDeleted()` functions to filter records, and can be used without needing to remember the specific columnName for any model:

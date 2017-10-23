@@ -1,9 +1,7 @@
-'use strict'
-
-module.exports = (options) => {
-  options = Object.assign({
-    columnName: 'deleted'
-  }, options);
+module.exports = (incomingOptions) => {
+  const options = Object.assign({
+    columnName: 'deleted',
+  }, incomingOptions);
 
   return (Model) => {
     class SDQueryBuilder extends Model.QueryBuilder {
@@ -21,7 +19,7 @@ module.exports = (options) => {
 
       // provide a way to undo the delete
       undelete() {
-        const patch = {}
+        const patch = {};
         patch[options.columnName] = false;
         return this.patch(patch);
       }
@@ -39,9 +37,8 @@ module.exports = (options) => {
       }
     }
     return class extends Model {
-
       static get QueryBuilder() {
-        return SDQueryBuilder;;
+        return SDQueryBuilder;
       }
 
       // add a named filter for use in the .eager() function
@@ -53,9 +50,9 @@ module.exports = (options) => {
           },
           deleted: (b) => {
             b.whereDeleted();
-          }
+          },
         });
       }
     };
-  }
-}
+  };
+};

@@ -1,11 +1,12 @@
 {
   "name": "objection-soft-delete",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A plugin for objection js to support soft delete functionallity",
   "main": "index.js",
   "scripts": {
     "test": "nyc mocha tests.js",
-    "coverage": "nyc report --reporter=text-lcov | coveralls"
+    "coverage": "nyc report --reporter=text-lcov | coveralls",
+    "lint": "eslint ."
   },
   "keywords": [
     "objection",
@@ -26,6 +27,11 @@
   "devDependencies": {
     "chai": "^4.1.2",
     "coveralls": "^3.0.0",
+    "eslint": "^4.9.0",
+    "eslint-config-airbnb": "^16.1.0",
+    "eslint-plugin-import": "^2.8.0",
+    "eslint-plugin-jsx-a11y": "^6.0.2",
+    "eslint-plugin-react": "^7.4.0",
     "knex": "^0.13.0",
     "mocha": "^4.0.1",
     "nyc": "^11.2.1",

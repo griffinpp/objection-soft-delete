@@ -264,6 +264,18 @@ or:
 yarn test
 ```
 
+## Linting
+
+The linter can be run with:
+```sh
+npm run lint
+```
+
+or:
+```sh
+yarn lint
+```
+
 
 ## Contributing
 

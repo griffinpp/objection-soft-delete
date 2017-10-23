@@ -1,8 +1,9 @@
-'use strict';
-
 const sutFactory = require('./index');
+// eslint-disable-next-line
 const Model = require('objection').Model;
+// eslint-disable-next-line
 const Knex = require('knex');
+// eslint-disable-next-line
 const expect = require('chai').expect;
 
 function getModel(options) {
@@ -23,8 +24,8 @@ describe('Soft Delete plugin tests', () => {
       client: 'sqlite3',
       useNullAsDefault: true,
       connection: {
-        filename: './test.db'
-      }
+        filename: './test.db',
+      },
     });
   });
 
@@ -35,22 +36,22 @@ describe('Soft Delete plugin tests', () => {
       table.boolean('deleted');
       table.boolean('inactive');
     })
-    .createTable('RelatedObjects', (table) => {
-      table.increments('id').primary();
-      table.string('name');
-      table.boolean('deleted');
-    })
-    .createTable('JoinTable', (table) => {
-      table.increments('id').primary();
-      table.integer('testObjectId')
-        .unsigned()
-        .references('id')
-        .inTable('TestObjects');
-      table.integer('relatedObjectId')
-        .unsigned()
-        .references('id')
-        .inTable('RelatedObjects');
-    });
+      .createTable('RelatedObjects', (table) => {
+        table.increments('id').primary();
+        table.string('name');
+        table.boolean('deleted');
+      })
+      .createTable('JoinTable', (table) => {
+        table.increments('id').primary();
+        table.integer('testObjectId')
+          .unsigned()
+          .references('id')
+          .inTable('TestObjects');
+        table.integer('relatedObjectId')
+          .unsigned()
+          .references('id')
+          .inTable('RelatedObjects');
+      });
   });
 
   after(() => {
@@ -76,36 +77,36 @@ describe('Soft Delete plugin tests', () => {
         name: 'Test Object 2',
         deleted: 0,
         inactive: 0,
-      }
+      },
     ])
-    .then(() => {
-      return knex('RelatedObjects').insert([
-        {
-          id: 1,
-          name: 'RelatedObject 1',
-          deleted: 0,
-        },
-      ]);
-    })
-    .then(() => {
-      return knex('JoinTable').insert([
-        {
-          testObjectId: 1,
-          relatedObjectId: 1,
-        },
-        {
-          testObjectId: 2,
-          relatedObjectId: 1,
-        }
-      ]);
-    });
-  })
+      .then(() => {
+        return knex('RelatedObjects').insert([
+          {
+            id: 1,
+            name: 'RelatedObject 1',
+            deleted: 0,
+          },
+        ]);
+      })
+      .then(() => {
+        return knex('JoinTable').insert([
+          {
+            testObjectId: 1,
+            relatedObjectId: 1,
+          },
+          {
+            testObjectId: 2,
+            relatedObjectId: 1,
+          },
+        ]);
+      });
+  });
 
   afterEach(() => {
     return knex('JoinTable').delete()
       .then(() => { return knex('TestObjects').delete(); })
       .then(() => { return knex('RelatedObjects').delete(); });
-  })
+  });
 
   describe('.delete() or .del()', () => {
     describe('when a columnName was not specified', () => {
@@ -160,7 +161,7 @@ describe('Soft Delete plugin tests', () => {
           })
           .then((result) => {
             expect(result.inactive).to.equal(1, 'row not marked deleted');
-          })
+          });
       });
     });
   });
@@ -178,6 +179,7 @@ describe('Soft Delete plugin tests', () => {
             .first();
         })
         .then((result) => {
+          // eslint-disable-next-line
           expect(result).to.be.undefined;
         });
     });
@@ -198,6 +200,7 @@ describe('Soft Delete plugin tests', () => {
               .first();
           })
           .then((result) => {
+            // eslint-disable-next-line
             expect(result).to.be.undefined;
           });
       });
@@ -274,7 +277,7 @@ describe('Soft Delete plugin tests', () => {
         .then((result) => {
           const anyDeletedExist = result.reduce((acc, obj) => {
             return acc || obj.deleted === 1;
-          }, false)
+          }, false);
           expect(anyDeletedExist).to.equal(false, 'a deleted record was included in the result set');
         });
     });
@@ -291,7 +294,7 @@ describe('Soft Delete plugin tests', () => {
         .then((result) => {
           const anyDeletedExist = result.reduce((acc, obj) => {
             return acc || obj.inactive === 1;
-          }, false)
+          }, false);
           expect(anyDeletedExist).to.equal(false, 'a deleted record was included in the result set');
         });
     });
@@ -319,9 +322,9 @@ describe('Soft Delete plugin tests', () => {
               },
               filter: (f) => {
                 f.whereNotDeleted();
-              }
+              },
             },
-          }
+          };
         }
       };
 
@@ -357,7 +360,7 @@ describe('Soft Delete plugin tests', () => {
         .then((result) => {
           const allDeleted = result.reduce((acc, obj) => {
             return acc && obj.deleted === 1;
-          }, true)
+          }, true);
           expect(allDeleted).to.equal(true, 'an undeleted record was included in the result set');
         });
     });
@@ -374,7 +377,7 @@ describe('Soft Delete plugin tests', () => {
         .then((result) => {
           const allDeleted = result.reduce((acc, obj) => {
             return acc && obj.inactive === 1;
-          }, true)
+          }, true);
           expect(allDeleted).to.equal(true, 'an undeleted record was included in the result set');
         });
     });
@@ -402,9 +405,9 @@ describe('Soft Delete plugin tests', () => {
               },
               filter: (f) => {
                 f.whereDeleted();
-              }
+              },
             },
-          }
+          };
         }
       };
 
@@ -450,7 +453,7 @@ describe('Soft Delete plugin tests', () => {
                 to: 'TestObjects.id',
               },
             },
-          }
+          };
         }
       };
 
@@ -495,7 +498,7 @@ describe('Soft Delete plugin tests', () => {
                 to: 'TestObjects.id',
               },
             },
-          }
+          };
         }
       };
 
@@ -541,7 +544,7 @@ describe('Soft Delete plugin tests', () => {
                 to: 'TestObjects.id',
               },
             },
-          }
+          };
         }
       };
 
@@ -557,7 +560,7 @@ describe('Soft Delete plugin tests', () => {
           expect(result[0].deleted).to.equal(0, 'deleted row included in base result');
           expect(result[0].testObjects.length).to.equal(1, 'wrong number of eager relations loaded');
           expect(result[0].testObjects[0].inactive).to.equal(0, 'deleted row included in eager relations');
-        })
+        });
     });
   });
 });

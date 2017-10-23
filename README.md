@@ -54,25 +54,51 @@ class User extends softDelete(Model) {
 }
 ```
 
-### Now when `.delete()` or `.del()` is called, the matching row(s) will be flagged instead of deleted
+### Now when `.delete()` or `.del()` is called, the matching row(s) will be flagged instead of deleted:
+Delete a User:
 ```js
-// delete a User:
 await User.query().where('id', 1).delete();
+```
 
-// can still fetch the row if necessary:
+Or:
+```js
+const user = await User.query().where('id', 1).first();
+await user.$query().delete();
+```
+
+You can still fetch deleted rows:
+```js
 const deletedUser = await User.query().where('id', 1).first(); // => User { id: 1, deleted: true, ... }
 ```
 
-### A named filter is provided for use in the `.eager()` function to filter out soft-deleted records
+You can easily filter out deleted rows without needing to remember the specific columnName for the model:
+```js
+const activeUsers = await User.query().whereNotDeleted();
+```
+You can restore the row if desired:
+```js
+await User.query().where('id', 1).undelete();
+```
+
+You can still remove the row from the db if desired:
+```js
+await User.query.where('id', 1).hardDelete(); // => row with id:1 is permanently deleted
+```
+
+### Filtering out deleted records in eagerly loaded models
+
+#### Using the named filter
+A `notDeleted` filter will be added to the list of named filters for any model that mixes in the plugin.  This filter uses the `.whereNotDeleted()` function to filter out deleted records, and can be used without needing to remember the specific columnName for any model:
 ```js
 // some other Model with a relation to the `User` model:
 const group = await UserGroup.query()
   .where('id', 1)
   .first()
-  .eager('users(notDeleted)'); // => now group.users contains only records that are not flagged as being deleted, based on whatever `columnName` you specified in the `User` model
+  .eager('users(notDeleted)'); // => now group.users contains only records that are not deleted
 ```
 
-### As another option, a filter can be applied directly to the relationship definition to ensure that deleted rows never appear:
+#### Using a relationship filter
+As another option, a filter can be applied directly to the relationship definition to ensure that deleted rows never appear:
 ```js
 // some other class that has a FK to User:
 class UserGroup extends Model {
@@ -96,7 +122,7 @@ class UserGroup extends Model {
           to: 'Users.id',
         },
         filter: (f) => {
-          f.where('deleted', false); // be sure to use whatever columnName you have specified in the `User` model
+          f.whereNotDeleted(); // .whereNotDeleted() will use the correct columnName for the related model automatically
         },
       },
     }
@@ -110,18 +136,6 @@ const group = await UserGroup.query()
   .where('id', 1)
   .first()
   .eager('users'); // => deleted `User` rows are filtered out automatically without having to specify the filter here
-```
-
-### Actually deleting a row
-Sometimes you still need to remove a row from the database. A `.hardDelete()` function has been provided for this purpose:
-```js
-await User.query()
-  .where('id', 1)
-  .hardDelete();
-  
-const user = await User.query()
-  .where('id', 1)
-  .first(); // => undefined
 ```
 
 ### Using with `.graphUpsert()`
@@ -172,7 +186,7 @@ await User.query().upsertGraph({
 
 ## Options
 
-**columnName:** the name of the column to use as the soft delete flag on the model (Default: 'deleted').  The column must exist on the table for the model.
+**columnName:** the name of the column to use as the soft delete flag on the model (Default: `'deleted'`).  The column must exist on the table for the model.
 
 You can specify different column names per-model by using the options:
 ```js
@@ -186,6 +200,12 @@ const softDelete = require('objection-soft-delete')({
 Tests can be run with:
 ```sh
 npm test
+```
+
+or:
+
+```sh
+yarn test
 ```
 
 

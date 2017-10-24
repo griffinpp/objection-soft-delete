@@ -29,13 +29,13 @@ module.exports = (incomingOptions) => {
       // provide a way to filter to ONLY deleted records without having to remember the column name
       whereDeleted() {
         // qualify the column name
-        return this.where(`${this._modelClass.tableName}.${options.columnName}`, true);
+        return this.where(`${this.modelClass().tableName}.${options.columnName}`, true);
       }
 
       // provide a way to filter out deleted records without having to remember the column name
       whereNotDeleted() {
         // qualify the column name
-        return this.where(`${this._modelClass.tableName}.${options.columnName}`, false);
+        return this.where(`${this.modelClass().tableName}.${options.columnName}`, false);
       }
     }
     return class extends Model {

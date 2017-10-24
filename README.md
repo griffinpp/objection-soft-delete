@@ -194,9 +194,9 @@ await User.query()
 // and so on...
 ```
 
-### Using with `.graphUpsert()`
-This plugin was actually born out of a need to have `.graphUpsert()` soft delete in some tables, and hard delete in others, so it plays nice with
-`.graphUpsert()`:
+### Using with `.upsertGraph()`
+This plugin was actually born out of a need to have `.upsertGraph()` soft delete in some tables, and hard delete in others, so it plays nice with
+`.upsertGraph()`:
 ```js
 // a model with soft delete
 class Phone extends softDelete(Model) {

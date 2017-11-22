@@ -9,6 +9,7 @@ module.exports = (incomingOptions) => {
     class SDQueryBuilder extends Model.QueryBuilder {
       // override the normal delete function with one that patches the row's "deleted" column
       delete() {
+        this.mergeContext({ softDelete: true });
         const patch = {};
         patch[options.columnName] = true;
         return this.patch(patch);
@@ -21,6 +22,7 @@ module.exports = (incomingOptions) => {
 
       // provide a way to undo the delete
       undelete() {
+        this.mergeContext({ undelete: true });
         const patch = {};
         patch[options.columnName] = false;
         return this.patch(patch);
@@ -39,8 +41,83 @@ module.exports = (incomingOptions) => {
       }
     }
     return class extends Model {
+      constructor() {
+        super();
+
+        const beforeUpdate = this.$beforeUpdate;
+        const beforeDelete = this.$beforeDelete;
+        const afterUpdate = this.$afterUpdate;
+        const afterDelete = this.$afterDelete;
+
+        this.$beforeUpdate = (opts, queryContext) => {
+          if (queryContext.softDelete) {
+            this.$beforeSoftDelete(queryContext);
+            this.$beforeDelete(queryContext);
+          } else if (queryContext.undelete) {
+            this.$beforeUndelete(queryContext);
+          } else {
+            beforeUpdate(opts, queryContext);
+          }
+        };
+
+        this.$beforeDelete = (queryContext) => {
+          if (!queryContext.softDelete) {
+            this.$beforeHardDelete(queryContext);
+          }
+          beforeDelete(queryContext);
+        };
+
+        this.$afterUpdate = (opts, queryContext) => {
+          if (queryContext.softDelete) {
+            this.$afterSoftDelete(queryContext);
+            this.$afterDelete(queryContext);
+          } else if (queryContext.undelete) {
+            this.$afterUndelete(queryContext);
+          } else {
+            afterUpdate(opts, queryContext);
+          }
+        };
+
+        this.$afterDelete = (queryContext) => {
+          if (!queryContext.softDelete) {
+            this.$afterHardDelete(queryContext);
+          }
+          afterDelete(queryContext);
+        };
+      }
+
       static get QueryBuilder() {
         return SDQueryBuilder;
+      }
+
+      // eslint-disable-next-line class-methods-use-this
+      $beforeSoftDelete() {
+        // expect this to be overridden in whatever class extends
+      }
+
+      // eslint-disable-next-line class-methods-use-this
+      $afterSoftDelete() {
+        // expect this to be overridden in whatever class extends
+      }
+
+      // eslint-disable-next-line class-methods-use-this
+      $beforeHardDelete() {
+        // expect this to be overridden in whatever class extends
+      }
+
+      // eslint-disable-next-line class-methods-use-this
+      $afterHardDelete() {
+        // expect this to be overridden in whatever class extends
+      }
+
+      // eslint-disable-next-line class-methods-use-this
+      $beforeUndelete() {
+        // expect this to be overridden in whatever class extends
+      }
+
+      // eslint-disable-next-line class-methods-use-this
+      $afterUndelete() {
+        // expect this to be overridden in whatever class extends
       }
 
       // add a named filter for use in the .eager() function

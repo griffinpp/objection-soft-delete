@@ -8,12 +8,89 @@ const Knex = require('knex');
 // eslint-disable-next-line
 const expect = require('chai').expect;
 
+let buCalled;
+let bdCalled;
+let auCalled;
+let adCalled;
+let bsdCalled;
+let asdCalled;
+let bhdCalled;
+let ahdCalled;
+let budCalled;
+let audCalled;
+
 function getModel(options) {
   const sut = sutFactory(options);
 
+  buCalled = false;
+  bdCalled = false;
+  auCalled = false;
+  adCalled = false;
+  bsdCalled = false;
+  asdCalled = false;
+  bhdCalled = false;
+  ahdCalled = false;
+  budCalled = false;
+  audCalled = false;
+
   return class TestObject extends sut(Model) {
+    // eslint-disable-next-line
+    $beforeUpdate() {
+      buCalled = true;
+    }
+    // eslint-disable-next-line
+    $beforeDelete() {
+      bdCalled = true;
+    }
+    // eslint-disable-next-line
+    $beforeSoftDelete() {
+      bsdCalled = true;
+    }
+    // eslint-disable-next-line
+    $beforeHardDelete() {
+      bhdCalled = true;
+    }
+    // eslint-disable-next-line
+    $beforeUndelete() {
+      budCalled = true;
+    }
+    // eslint-disable-next-line
+    $afterUpdate() {
+      auCalled = true;
+    }
+    // eslint-disable-next-line
+    $afterDelete() {
+      adCalled = true;
+    }
+    // eslint-disable-next-line
+    $afterSoftDelete() {
+      asdCalled = true;
+    }
+    // eslint-disable-next-line
+    $afterHardDelete() {
+      ahdCalled = true;
+    }
+    // eslint-disable-next-line
+    $afterUndelete() {
+      audCalled = true;
+    }
+
     static get tableName() {
       return 'TestObjects';
+    }
+
+    static get jsonSchema() {
+      return {
+        type: 'object',
+        required: [],
+
+        properties: {
+          id: { type: 'integer' },
+          name: { type: 'string' },
+          deleted: { type: 'boolean' },
+          inactive: { type: 'boolean' },
+        },
+      };
     }
   };
 }
@@ -147,7 +224,6 @@ describe('Soft Delete plugin tests', () => {
     });
     describe('when used with .$query()', () => {
       it('should still mark the row deleted', () => {
-        // not sure if this will work...
         const TestObject = getModel({ columnName: 'inactive' });
 
         return TestObject.query(knex)
@@ -163,6 +239,110 @@ describe('Soft Delete plugin tests', () => {
           })
           .then((result) => {
             expect(result.inactive).to.equal(1, 'row not marked deleted');
+          });
+      });
+      it('should call the .$beforeSoftDelete function, if there is one', () => {
+        const TestObject = getModel();
+
+        return TestObject.query(knex)
+          .where('id', 1)
+          .first()
+          .then((result) => {
+            return result.$query(knex).del();
+          })
+          .then(() => {
+            expect(bsdCalled).to.equal(true, '$beforeSoftDelete not called');
+          });
+      });
+      it('should call the .$beforeDelete function, if there is one', () => {
+        const TestObject = getModel();
+
+        return TestObject.query(knex)
+          .where('id', 1)
+          .first()
+          .then((result) => {
+            return result.$query(knex).del();
+          })
+          .then(() => {
+            expect(bdCalled).to.equal(true, '$beforeDelete not called');
+          });
+      });
+      it('should not call the .$beforeHardDelete function, even if there is one', () => {
+        const TestObject = getModel();
+
+        return TestObject.query(knex)
+          .where('id', 1)
+          .first()
+          .then((result) => {
+            return result.$query(knex).del();
+          })
+          .then(() => {
+            expect(bhdCalled).to.equal(false, '$beforeHardDelete called');
+          });
+      });
+      it('should not call the .$beforeUpdate function, even if there is one', () => {
+        const TestObject = getModel();
+
+        return TestObject.query(knex)
+          .where('id', 1)
+          .first()
+          .then((result) => {
+            return result.$query(knex).del();
+          })
+          .then(() => {
+            expect(buCalled).to.equal(false, '$beforeUpdate called');
+          });
+      });
+      it('should call the .$afterSoftDelete function, if there is one', () => {
+        const TestObject = getModel();
+
+        return TestObject.query(knex)
+          .where('id', 1)
+          .first()
+          .then((result) => {
+            return result.$query(knex).del();
+          })
+          .then(() => {
+            expect(asdCalled).to.equal(true, '$afterSoftDelete not called');
+          });
+      });
+      it('should call the .$afterDelete function, if there is one', () => {
+        const TestObject = getModel();
+
+        return TestObject.query(knex)
+          .where('id', 1)
+          .first()
+          .then((result) => {
+            return result.$query(knex).del();
+          })
+          .then(() => {
+            expect(adCalled).to.equal(true, '$afterDelete not called');
+          });
+      });
+      it('should not call the .$afterHardDelete function, even if there is one', () => {
+        const TestObject = getModel();
+
+        return TestObject.query(knex)
+          .where('id', 1)
+          .first()
+          .then((result) => {
+            return result.$query(knex).del();
+          })
+          .then(() => {
+            expect(ahdCalled).to.equal(false, '$afterHardDelete called');
+          });
+      });
+      it('should not call the .$afterUpdate function, even if there is one', () => {
+        const TestObject = getModel();
+
+        return TestObject.query(knex)
+          .where('id', 1)
+          .first()
+          .then((result) => {
+            return result.$query(knex).del();
+          })
+          .then(() => {
+            expect(auCalled).to.equal(false, '$afterUpdate called');
           });
       });
     });
@@ -204,6 +384,110 @@ describe('Soft Delete plugin tests', () => {
           .then((result) => {
             // eslint-disable-next-line
             expect(result).to.be.undefined;
+          });
+      });
+      it('should not call the .$beforeSoftDelete function, even if there is one', () => {
+        const TestObject = getModel();
+
+        return TestObject.query(knex)
+          .where('id', 1)
+          .first()
+          .then((result) => {
+            return result.$query(knex).hardDelete();
+          })
+          .then(() => {
+            expect(bsdCalled).to.equal(false, '$beforeSoftDelete called');
+          });
+      });
+      it('should call the .$beforeDelete function, if there is one', () => {
+        const TestObject = getModel();
+
+        return TestObject.query(knex)
+          .where('id', 1)
+          .first()
+          .then((result) => {
+            return result.$query(knex).hardDelete();
+          })
+          .then(() => {
+            expect(bdCalled).to.equal(true, '$beforeDelete not called');
+          });
+      });
+      it('should call the .$beforeHardDelete function, if there is one', () => {
+        const TestObject = getModel();
+
+        return TestObject.query(knex)
+          .where('id', 1)
+          .first()
+          .then((result) => {
+            return result.$query(knex).hardDelete();
+          })
+          .then(() => {
+            expect(bhdCalled).to.equal(true, '$beforeHardDelete not called');
+          });
+      });
+      it('should not call the .$beforeUpdate function, even if there is one', () => {
+        const TestObject = getModel();
+
+        return TestObject.query(knex)
+          .where('id', 1)
+          .first()
+          .then((result) => {
+            return result.$query(knex).hardDelete();
+          })
+          .then(() => {
+            expect(buCalled).to.equal(false, '$beforeUpdate called');
+          });
+      });
+      it('should not call the .$afterSoftDelete function, even if there is one', () => {
+        const TestObject = getModel();
+
+        return TestObject.query(knex)
+          .where('id', 1)
+          .first()
+          .then((result) => {
+            return result.$query(knex).hardDelete();
+          })
+          .then(() => {
+            expect(asdCalled).to.equal(false, '$afterSoftDelete called');
+          });
+      });
+      it('should call the .$afterDelete function, if there is one', () => {
+        const TestObject = getModel();
+
+        return TestObject.query(knex)
+          .where('id', 1)
+          .first()
+          .then((result) => {
+            return result.$query(knex).hardDelete();
+          })
+          .then(() => {
+            expect(adCalled).to.equal(true, '$afterDelete not called');
+          });
+      });
+      it('should call the .$afterHardDelete function, if there is one', () => {
+        const TestObject = getModel();
+
+        return TestObject.query(knex)
+          .where('id', 1)
+          .first()
+          .then((result) => {
+            return result.$query(knex).hardDelete();
+          })
+          .then(() => {
+            expect(ahdCalled).to.equal(true, '$afterHardDelete not called');
+          });
+      });
+      it('should not call the .$afterUpdate function, even if there is one', () => {
+        const TestObject = getModel();
+
+        return TestObject.query(knex)
+          .where('id', 1)
+          .first()
+          .then((result) => {
+            return result.$query(knex).hardDelete();
+          })
+          .then(() => {
+            expect(auCalled).to.equal(false, '$afterUpdate called');
           });
       });
     });
@@ -262,6 +546,150 @@ describe('Soft Delete plugin tests', () => {
             expect(result.deleted).to.equal(0, 'row not undeleted');
           });
       });
+      it('should call the $beforeUndelete function, if it exists', () => {
+        const TestObject = getModel();
+
+        // soft delete the row
+        return TestObject.query(knex)
+          .where('id', 1)
+          .del()
+          .then(() => {
+            // get the deleted row
+            return TestObject.query(knex)
+              .where('id', 1)
+              .first();
+          })
+          .then((result) => {
+            // undelete the row
+            return result.$query(knex)
+              .undelete();
+          })
+          .then(() => {
+            expect(budCalled).to.equal(true, '$beforeUndelete not called');
+          });
+      });
+      it('should call the $afterUndelete function, if it exists', () => {
+        const TestObject = getModel();
+
+        // soft delete the row
+        return TestObject.query(knex)
+          .where('id', 1)
+          .del()
+          .then(() => {
+            // get the deleted row
+            return TestObject.query(knex)
+              .where('id', 1)
+              .first();
+          })
+          .then((result) => {
+            // undelete the row
+            return result.$query(knex)
+              .undelete();
+          })
+          .then(() => {
+            expect(audCalled).to.equal(true, '$afterUndelete not called');
+          });
+      });
+      it('should not call the $beforeUpdate funciton, if it exists', () => {
+        const TestObject = getModel();
+
+        // soft delete the row
+        return TestObject.query(knex)
+          .where('id', 1)
+          .del()
+          .then(() => {
+            // get the deleted row
+            return TestObject.query(knex)
+              .where('id', 1)
+              .first();
+          })
+          .then((result) => {
+            // undelete the row
+            return result.$query(knex)
+              .undelete();
+          })
+          .then(() => {
+            expect(buCalled).to.equal(false, '$beforeUpdate called');
+          });
+      });
+      it('should not call the $afterUpdate function, if it exists', () => {
+        const TestObject = getModel();
+
+        // soft delete the row
+        return TestObject.query(knex)
+          .where('id', 1)
+          .del()
+          .then(() => {
+            // get the deleted row
+            return TestObject.query(knex)
+              .where('id', 1)
+              .first();
+          })
+          .then((result) => {
+            // undelete the row
+            return result.$query(knex)
+              .undelete();
+          })
+          .then(() => {
+            expect(auCalled).to.equal(false, '$afterUpdate called');
+          });
+      });
+    });
+  });
+
+  describe('$query.patch() or $query.update()', () => {
+    it('should call the $beforeUpdate function, if it exists', () => {
+      const TestObject = getModel();
+
+      // soft delete the row
+      return TestObject.query(knex)
+        .where('id', 1)
+        .first()
+        .then((result) => {
+          // undelete the row
+          return result.$query(knex)
+            .patch({ name: 'update' });
+        })
+        .then(() => {
+          expect(buCalled).to.equal(true, '$beforeUpdate not called');
+        });
+    });
+    it('should call the $afterUpdate function, if it exists', () => {
+      const TestObject = getModel();
+
+      // soft delete the row
+      return TestObject.query(knex)
+        .where('id', 1)
+        .first()
+        .then((result) => {
+          // undelete the row
+          return result.$query(knex)
+            .patch({ name: 'update' });
+        })
+        .then(() => {
+          expect(auCalled).to.equal(true, '$afterUpdate not called');
+        });
+    });
+    it('should not call any of the new life cycle functions, even if they exist', () => {
+      const TestObject = getModel();
+
+      // soft delete the row
+      return TestObject.query(knex)
+        .where('id', 1)
+        .first()
+        .then((result) => {
+          // undelete the row
+          return result.$query(knex)
+            .patch({ name: 'update' });
+        })
+        .then(() => {
+          expect(bsdCalled).to.equal(false, '$beforeSoftDelete called');
+          expect(asdCalled).to.equal(false, '$afterSoftDelete called');
+          expect(bhdCalled).to.equal(false, '$beforeHardDelete called');
+          expect(ahdCalled).to.equal(false, '$afterHardDelete called');
+          expect(budCalled).to.equal(false, '$beforeUndelete called');
+          expect(audCalled).to.equal(false, '$afterUndelete called');
+        });
     });
   });
 

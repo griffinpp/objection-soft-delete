@@ -240,6 +240,25 @@ await User.query().upsertGraph({
 }); // => phone id 6 will be flagged deleted (and will still be related to Johnny!), email id 3 will be removed from the database
 ```
 
+### Lifecycle Functions
+
+One issue that comes with doing soft deletes is that your calls to `.delete()` will actually trigger lifecycle functions for `.update()`, which may not be expected or desired.  To help address this, some context flags have been added to the `queryContext` that is passed into lifecycle functions to help discern whether the event that triggered (e.g.) `$beforeUpdate` was a true update, a soft delete, or an undelete:
+```js
+  $beforeUpdate(opt, queryContext) {
+    if (queryContext.softDelete) {
+      // do something before a soft delete, possibly including calling your $beforeDelete function.
+      // Think this through carefully if you are using additional plugins, as their lifecycle
+      // functions may execute before this one depending on how you have set up your inheritance chain!
+    } else if (queryContext.undelete) {
+      // do something before an undelete
+    } else {
+      // do something before a normal update
+    }
+  }
+  
+  // same procedure for $afterUpdate
+```
+
 ## Options
 
 **columnName:** the name of the column to use as the soft delete flag on the model (Default: `'deleted'`).  The column must exist on the table for the model.

@@ -9,6 +9,9 @@ module.exports = (incomingOptions) => {
     class SDQueryBuilder extends Model.QueryBuilder {
       // override the normal delete function with one that patches the row's "deleted" column
       delete() {
+        this.mergeContext({
+          softDelete: true,
+        });
         const patch = {};
         patch[options.columnName] = true;
         return this.patch(patch);
@@ -21,6 +24,9 @@ module.exports = (incomingOptions) => {
 
       // provide a way to undo the delete
       undelete() {
+        this.mergeContext({
+          undelete: true,
+        });
         const patch = {};
         patch[options.columnName] = false;
         return this.patch(patch);

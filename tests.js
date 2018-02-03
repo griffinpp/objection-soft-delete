@@ -8,12 +8,64 @@ const Knex = require('knex');
 // eslint-disable-next-line
 const expect = require('chai').expect;
 
+let beforeHardDelete;
+let afterHardDelete;
+let beforeSoftDelete;
+let afterSoftDelete;
+let beforeUndelete;
+let afterUndelete;
+let beforeUpdate;
+let afterUpdate;
+
+function resetLifecycleChecks() {
+  beforeHardDelete = false;
+  afterHardDelete = false;
+  beforeSoftDelete = false;
+  afterSoftDelete = false;
+  beforeUndelete = false;
+  afterUndelete = false;
+  beforeUpdate = false;
+  afterUpdate = false;
+}
+
 function getModel(options) {
   const sut = sutFactory(options);
 
   return class TestObject extends sut(Model) {
     static get tableName() {
       return 'TestObjects';
+    }
+
+    $beforeDelete(queryContext) {
+      super.$beforeDelete(queryContext);
+      beforeHardDelete = true;
+    }
+
+    $afterDelete(queryContext) {
+      super.$afterDelete(queryContext);
+      afterHardDelete = true;
+    }
+
+    $beforeUpdate(opts, queryContext) {
+      super.$beforeUpdate(opts, queryContext);
+      if (queryContext.softDelete) {
+        beforeSoftDelete = true;
+      } else if (queryContext.undelete) {
+        beforeUndelete = true;
+      } else {
+        beforeUpdate = true;
+      }
+    }
+
+    $afterUpdate(opts, queryContext) {
+      super.$afterUpdate(opts, queryContext);
+      if (queryContext.softDelete) {
+        afterSoftDelete = true;
+      } else if (queryContext.undelete) {
+        afterUndelete = true;
+      } else {
+        afterUpdate = true;
+      }
     }
   };
 }
@@ -67,6 +119,7 @@ describe('Soft Delete plugin tests', () => {
   });
 
   beforeEach(() => {
+    resetLifecycleChecks();
     return knex('TestObjects').insert([
       {
         id: 1,
@@ -111,6 +164,17 @@ describe('Soft Delete plugin tests', () => {
   });
 
   describe('.delete() or .del()', () => {
+    it('should set the "softDelete" flag in the queryContext of lifecycle functions', () => {
+      const TestObject = getModel();
+
+      return TestObject.query(knex)
+        .where('id', 1)
+        .del()
+        .then(() => {
+          expect(beforeSoftDelete).to.equal(true, 'before queryContext not set');
+          expect(afterSoftDelete).to.equal(true, 'after queryContext not set');
+        });
+    });
     describe('when a columnName was not specified', () => {
       it('should set the "deleted" column to true for any matching records', () => {
         const TestObject = getModel();
@@ -210,6 +274,24 @@ describe('Soft Delete plugin tests', () => {
   });
 
   describe('.undelete()', () => {
+    it('should set the "undelete" flag in the queryContext of lifecycle functions', () => {
+      const TestObject = getModel();
+
+      // soft delete the row
+      return TestObject.query(knex)
+        .where('id', 1)
+        .del()
+        .then(() => {
+          // now undelete the previously deleted row
+          return TestObject.query(knex)
+            .where('id', 1)
+            .undelete();
+        })
+        .then(() => {
+          expect(beforeUndelete).to.equal(true, 'before queryContext not set');
+          expect(afterUndelete).to.equal(true, 'after queryContext not set');
+        });
+    });
     it('should set the configured delete column to false for any matching records', () => {
       const TestObject = getModel();
 
@@ -262,6 +344,23 @@ describe('Soft Delete plugin tests', () => {
             expect(result.deleted).to.equal(0, 'row not undeleted');
           });
       });
+    });
+  });
+
+  describe('a normal update', () => {
+    it('should not set any queryContext flags', () => {
+      const TestObject = getModel();
+
+      // soft delete the row
+      return TestObject.query(knex)
+        .where('id', 1)
+        .patch({ name: 'edited name' })
+        .then(() => {
+          expect(beforeSoftDelete).to.equal(false, 'before softDelete queryContext set incorrectly');
+          expect(afterSoftDelete).to.equal(false, 'after softDelete queryContext set incorrectly');
+          expect(beforeUndelete).to.equal(false, 'before undelete queryContext set incorrectly');
+          expect(afterUndelete).to.equal(false, 'after undelete queryContext set incorrectly');
+        });
     });
   });
 

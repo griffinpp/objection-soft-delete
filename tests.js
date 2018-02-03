@@ -8,24 +8,16 @@ const Knex = require('knex');
 // eslint-disable-next-line
 const expect = require('chai').expect;
 
-let beforeHardDelete;
-let afterHardDelete;
 let beforeSoftDelete;
 let afterSoftDelete;
 let beforeUndelete;
 let afterUndelete;
-let beforeUpdate;
-let afterUpdate;
 
 function resetLifecycleChecks() {
-  beforeHardDelete = false;
-  afterHardDelete = false;
   beforeSoftDelete = false;
   afterSoftDelete = false;
   beforeUndelete = false;
   afterUndelete = false;
-  beforeUpdate = false;
-  afterUpdate = false;
 }
 
 function getModel(options) {
@@ -38,12 +30,10 @@ function getModel(options) {
 
     $beforeDelete(queryContext) {
       super.$beforeDelete(queryContext);
-      beforeHardDelete = true;
     }
 
     $afterDelete(queryContext) {
       super.$afterDelete(queryContext);
-      afterHardDelete = true;
     }
 
     $beforeUpdate(opts, queryContext) {
@@ -52,8 +42,6 @@ function getModel(options) {
         beforeSoftDelete = true;
       } else if (queryContext.undelete) {
         beforeUndelete = true;
-      } else {
-        beforeUpdate = true;
       }
     }
 
@@ -63,8 +51,6 @@ function getModel(options) {
         afterSoftDelete = true;
       } else if (queryContext.undelete) {
         afterUndelete = true;
-      } else {
-        afterUpdate = true;
       }
     }
   };

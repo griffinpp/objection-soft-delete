@@ -258,6 +258,11 @@ One issue that comes with doing soft deletes is that your calls to `.delete()` w
   
   // same procedure for $afterUpdate
 ```
+Available flags are:
+* softDelete
+* undelete
+
+Flags will be `true` if set, and `undefined` otherwise.
 
 ## Options
 

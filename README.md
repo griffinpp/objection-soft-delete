@@ -51,7 +51,7 @@ class User extends softDelete({ columnName: 'deleted' })(Model) {
 }
 ```
 
-#### Note: Make sure the `deleted` field of your table has a default value of `false` (and, while note required, you'll probably want to make it not nullable as well). A `deleted` value of `NULL` will result in this plugin producing unexpected behavior.
+#### Note: Make sure the `deleted` field of your table has a default value of `false` (and, while not required, you'll probably want to make it not nullable as well). A `deleted` value of `NULL` will result in this plugin producing unexpected behavior.
 
 ### When `.delete()` or `.del()` is called for that model, the matching row(s) are flagged `true` instead of deleted
 #### Delete a User:

@@ -61,6 +61,10 @@ module.exports = (incomingOptions) => {
           },
         });
       }
+
+      static get softDelete() {
+        return true;
+      }
     };
   };
 };

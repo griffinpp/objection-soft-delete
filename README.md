@@ -266,6 +266,10 @@ Available flags are:
 
 Flags will be `true` if set, and `undefined` otherwise.
 
+### Checking Whether a Model is SoftDelete
+
+All models with the soft delete mixin will have an `isSoftDelete` property, which returns `true`.
+
 ## Options
 
 **columnName:** the name of the column to use as the soft delete flag on the model (Default: `'deleted'`).  The column must exist on the table for the model.

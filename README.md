@@ -277,6 +277,25 @@ const softDelete = require('objection-soft-delete')({
 });
 ```
 
+**deletedValue:** you can set this option to allow a different value than "true" to be set in the specified column.
+For instance, you can use the following code to make a timestamp (you need knex instance to do so)
+```js
+const softDelete = require('objection-soft-delete')({
+  columnName: 'deleted_at',
+  deletedValue: knex.fn.now(),
+});
+```
+
+**notDeletedValue:** you can set (and should) this option along with `deletedValue` to allow a different value than "false" to be set in the specified column.
+For instance, you can use the following code to restore the column to null (you need knex instance to do so)
+```js
+const softDelete = require('objection-soft-delete')({
+  columnName: 'deleted_at',
+  deletedValue: knex.fn.now(),
+  notDeletedValue: null,
+});
+```
+
 ## Tests
 
 Tests can be run with:

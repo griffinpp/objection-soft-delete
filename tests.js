@@ -56,6 +56,26 @@ function getModel(options) {
   };
 }
 
+function overriddenValues(knex) {
+  return {
+    columnName: 'deleted_at',
+    deletedValue: knex.raw('STRFTIME(\'%Y-%m-%d %H:%M:%fZ\', \'NOW\')'),
+    notDeletedValue: null,
+  };
+}
+
+function createDeletedAtColumn(knex) {
+  return knex.schema.table('TestObjects', (table) => {
+    table.timestamp('deleted_at');
+  });
+}
+
+function removeDeletedAtColumn(knex) {
+  return knex.schema.table('TestObjects', (table) => {
+    table.dropColumn('deleted_at');
+  });
+}
+
 describe('Soft Delete plugin tests', () => {
   let knex;
 
@@ -216,6 +236,29 @@ describe('Soft Delete plugin tests', () => {
           });
       });
     });
+
+    describe('when deletedValue and nonDeletedValue are overridden', () => {
+      before(() => { return createDeletedAtColumn(knex); });
+      after(() => { return removeDeletedAtColumn(knex); });
+
+      it('should set the "deleted" column to the set value', () => {
+        const now = new Date();
+        const TestObject = getModel(overriddenValues(knex));
+
+        return TestObject.query(knex)
+          .where('id', 1)
+          .del()
+          .then(() => {
+            return TestObject.query(knex)
+              .where('id', 1)
+              .first();
+          })
+          .then((result) => {
+            const deletedAt = new Date(result.deleted_at);
+            expect(deletedAt).to.be.gt(now, 'row not marked deleted');
+          });
+      });
+    });
   });
 
   describe('.hardDelete()', () => {
@@ -246,6 +289,28 @@ describe('Soft Delete plugin tests', () => {
             return result.$query(knex)
               .hardDelete();
           })
+          .then(() => {
+            return TestObject.query(knex)
+              .where('id', 1)
+              .first();
+          })
+          .then((result) => {
+            // eslint-disable-next-line
+            expect(result).to.be.undefined;
+          });
+      });
+    });
+
+    describe('when deletedValue and nonDeletedValue are overridden', () => {
+      before(() => { return createDeletedAtColumn(knex); });
+      after(() => { return removeDeletedAtColumn(knex); });
+
+      it('should remove the row from the database', () => {
+        const TestObject = getModel(overriddenValues(knex));
+
+        return TestObject.query(knex)
+          .where('id', 1)
+          .hardDelete()
           .then(() => {
             return TestObject.query(knex)
               .where('id', 1)
@@ -301,6 +366,35 @@ describe('Soft Delete plugin tests', () => {
           expect(result.deleted).to.equal(0, 'row not undeleted');
         });
     });
+
+    describe('when deletedValue and nonDeletedValue are overridden', () => {
+      before(() => { return createDeletedAtColumn(knex); });
+      after(() => { return removeDeletedAtColumn(knex); });
+
+      it('should set the configured delete column to notDeletedValue for any matching records', () => {
+        const TestObject = getModel(overriddenValues(knex));
+
+        return TestObject.query(knex)
+          .where('id', 1)
+          .del()
+          .then(() => {
+          // now undelete the previously deleted row
+            return TestObject.query(knex)
+              .where('id', 1)
+              .undelete();
+          })
+          .then(() => {
+          // and verify
+            return TestObject.query(knex)
+              .where('id', 1)
+              .first();
+          })
+          .then((result) => {
+            expect(result.deleted_at).to.equal(null, 'row not undeleted');
+          });
+      });
+    });
+
     describe('when used with .$query()', () => {
       it('should set the configured delete column to false for the matching record', () => {
         const TestObject = getModel();
@@ -351,43 +445,7 @@ describe('Soft Delete plugin tests', () => {
   });
 
   describe('.whereNotDeleted()', () => {
-    it('should cause deleted rows to be filterd out of the main result set', () => {
-      const TestObject = getModel();
-
-      return TestObject.query(knex)
-        .where('id', 1)
-        .del()
-        .then(() => {
-          return TestObject.query(knex)
-            .whereNotDeleted();
-        })
-        .then((result) => {
-          const anyDeletedExist = result.reduce((acc, obj) => {
-            return acc || obj.deleted === 1;
-          }, false);
-          expect(anyDeletedExist).to.equal(false, 'a deleted record was included in the result set');
-        });
-    });
-    it('should still work when a different columnName was specified', () => {
-      const TestObject = getModel({ columnName: 'inactive' });
-
-      return TestObject.query(knex)
-        .where('id', 1)
-        .del()
-        .then(() => {
-          return TestObject.query(knex)
-            .whereNotDeleted();
-        })
-        .then((result) => {
-          const anyDeletedExist = result.reduce((acc, obj) => {
-            return acc || obj.inactive === 1;
-          }, false);
-          expect(anyDeletedExist).to.equal(false, 'a deleted record was included in the result set');
-        });
-    });
-    it('should work inside a relationship filter', () => {
-      const TestObject = getModel();
-
+    function whereNotDeletedRelationshipTest(TestObject) {
       // define the relationship to the TestObjects table
       const RelatedObject = class RelatedObject extends Model {
         static get tableName() {
@@ -430,11 +488,9 @@ describe('Soft Delete plugin tests', () => {
           expect(result.testObjects.length).to.equal(1, 'eager returns not filtered properly');
           expect(result.testObjects[0].id).to.equal(2, 'wrong result returned');
         });
-    });
-  });
+    }
 
-  describe('.whereDeleted()', () => {
-    it('should cause only deleted rows to appear in the result set', () => {
+    it('should cause deleted rows to be filterd out of the main result set', () => {
       const TestObject = getModel();
 
       return TestObject.query(knex)
@@ -442,13 +498,13 @@ describe('Soft Delete plugin tests', () => {
         .del()
         .then(() => {
           return TestObject.query(knex)
-            .whereDeleted();
+            .whereNotDeleted();
         })
         .then((result) => {
-          const allDeleted = result.reduce((acc, obj) => {
-            return acc && obj.deleted === 1;
-          }, true);
-          expect(allDeleted).to.equal(true, 'an undeleted record was included in the result set');
+          const anyDeletedExist = result.reduce((acc, obj) => {
+            return acc || obj.deleted === 1;
+          }, false);
+          expect(anyDeletedExist).to.equal(false, 'a deleted record was included in the result set');
         });
     });
     it('should still work when a different columnName was specified', () => {
@@ -459,18 +515,51 @@ describe('Soft Delete plugin tests', () => {
         .del()
         .then(() => {
           return TestObject.query(knex)
-            .whereDeleted();
+            .whereNotDeleted();
         })
         .then((result) => {
-          const allDeleted = result.reduce((acc, obj) => {
-            return acc && obj.inactive === 1;
-          }, true);
-          expect(allDeleted).to.equal(true, 'an undeleted record was included in the result set');
+          const anyDeletedExist = result.reduce((acc, obj) => {
+            return acc || obj.inactive === 1;
+          }, false);
+          expect(anyDeletedExist).to.equal(false, 'a deleted record was included in the result set');
         });
     });
     it('should work inside a relationship filter', () => {
       const TestObject = getModel();
+      return whereNotDeletedRelationshipTest(TestObject);
+    });
 
+    describe('when deletedValue and nonDeletedValue are overridden', () => {
+      before(() => { return createDeletedAtColumn(knex); });
+      after(() => { return removeDeletedAtColumn(knex); });
+
+      it('should cause deleted rows to be filtered out of the main result set', () => {
+        const TestObject = getModel(overriddenValues(knex));
+
+        return TestObject.query(knex)
+          .where('id', 1)
+          .del()
+          .then(() => {
+            return TestObject.query(knex)
+              .whereNotDeleted();
+          })
+          .then((result) => {
+            const anyDeletedExist = result.reduce((acc, obj) => {
+              return acc || obj.deleted_at !== null;
+            }, false);
+            expect(anyDeletedExist).to.equal(false, 'a deleted record was included in the result set');
+          });
+      });
+
+      it('should work inside a relationship filter', () => {
+        const TestObject = getModel(overriddenValues(knex));
+        return whereNotDeletedRelationshipTest(TestObject);
+      });
+    });
+  });
+
+  describe('.whereDeleted()', () => {
+    function whereDeletedRelationhipTest(TestObject) {
       // define the relationship to the TestObjects table
       const RelatedObject = class RelatedObject extends Model {
         static get tableName() {
@@ -513,13 +602,78 @@ describe('Soft Delete plugin tests', () => {
           expect(result.testObjects.length).to.equal(1, 'eager returns not filtered properly');
           expect(result.testObjects[0].id).to.equal(1, 'wrong result returned');
         });
+    }
+
+    it('should cause only deleted rows to appear in the result set', () => {
+      const TestObject = getModel();
+
+      return TestObject.query(knex)
+        .where('id', 1)
+        .del()
+        .then(() => {
+          return TestObject.query(knex)
+            .whereDeleted();
+        })
+        .then((result) => {
+          const allDeleted = result.reduce((acc, obj) => {
+            return acc && obj.deleted === 1;
+          }, true);
+          expect(allDeleted).to.equal(true, 'an undeleted record was included in the result set');
+        });
+    });
+    it('should still work when a different columnName was specified', () => {
+      const TestObject = getModel({ columnName: 'inactive' });
+
+      return TestObject.query(knex)
+        .where('id', 1)
+        .del()
+        .then(() => {
+          return TestObject.query(knex)
+            .whereDeleted();
+        })
+        .then((result) => {
+          const allDeleted = result.reduce((acc, obj) => {
+            return acc && obj.inactive === 1;
+          }, true);
+          expect(allDeleted).to.equal(true, 'an undeleted record was included in the result set');
+        });
+    });
+    it('should work inside a relationship filter', () => {
+      const TestObject = getModel();
+      return whereDeletedRelationhipTest(TestObject);
+    });
+
+    describe('when deletedValue and nonDeletedValue are overridden', () => {
+      before(() => { return createDeletedAtColumn(knex); });
+      after(() => { return removeDeletedAtColumn(knex); });
+
+      it('should cause only deleted rows to appear in the result set', () => {
+        const TestObject = getModel(overriddenValues(knex));
+
+        return TestObject.query(knex)
+          .where('id', 1)
+          .del()
+          .then(() => {
+            return TestObject.query(knex)
+              .whereDeleted();
+          })
+          .then((result) => {
+            const allDeleted = result.reduce((acc, obj) => {
+              return acc && obj.deleted !== null;
+            }, true);
+            expect(allDeleted).to.equal(true, 'an undeleted record was included in the result set');
+          });
+      });
+
+      it('should work inside a relationship filter', () => {
+        const TestObject = getModel(overriddenValues(knex));
+        return whereDeletedRelationhipTest(TestObject);
+      });
     });
   });
 
   describe('the notDeleted filter', () => {
-    it('should exclude any records that have been flagged on the configured column when used in a .eager() function call', () => {
-      const TestObject = getModel();
-
+    function notDeletedFilterTest(TestObject) {
       // define the relationship to the TestObjects table
       const RelatedObject = class RelatedObject extends Model {
         static get tableName() {
@@ -559,12 +713,25 @@ describe('Soft Delete plugin tests', () => {
           expect(result.testObjects.length).to.equal(1, 'eager returns not filtered properly');
           expect(result.testObjects[0].id).to.equal(2, 'wrong result returned');
         });
+    }
+
+    it('should exclude any records that have been flagged on the configured column when used in a .eager() function call', () => {
+      const TestObject = getModel();
+      return notDeletedFilterTest(TestObject);
+    });
+
+    describe('when deletedValue and nonDeletedValue are overridden', () => {
+      before(() => { return createDeletedAtColumn(knex); });
+      after(() => { return removeDeletedAtColumn(knex); });
+
+      it('should exclude any records that have been flagged on the configured column when used in a .eager() function call', () => {
+        const TestObject = getModel(overriddenValues(knex));
+        return notDeletedFilterTest(TestObject);
+      });
     });
   });
   describe('the deleted filter', () => {
-    it('should only include any records that have been flagged on the configured column when used in a .eager() function call', () => {
-      const TestObject = getModel();
-
+    function deletedFilterTest(TestObject) {
       // define the relationship to the TestObjects table
       const RelatedObject = class RelatedObject extends Model {
         static get tableName() {
@@ -604,6 +771,21 @@ describe('Soft Delete plugin tests', () => {
           expect(result.testObjects.length).to.equal(1, 'eager returns not filtered properly');
           expect(result.testObjects[0].id).to.equal(1, 'wrong result returned');
         });
+    }
+
+    it('should only include any records that have been flagged on the configured column when used in a .eager() function call', () => {
+      const TestObject = getModel();
+      return deletedFilterTest(TestObject);
+    });
+
+    describe('when deletedValue and nonDeletedValue are overridden', () => {
+      before(() => { return createDeletedAtColumn(knex); });
+      after(() => { return removeDeletedAtColumn(knex); });
+
+      it('should only include any records that have been flagged on the configured column when used in a .eager() function call', () => {
+        const TestObject = getModel(overriddenValues(knex));
+        return deletedFilterTest(TestObject);
+      });
     });
   });
 

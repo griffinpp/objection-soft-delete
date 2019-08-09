@@ -832,4 +832,11 @@ describe('Soft Delete plugin tests', () => {
         });
     });
   });
+
+  describe('soft delete indicator', () => {
+    it('should set isSoftDelete property', () => {
+      // eslint-disable-next-line no-unused-expressions
+      expect(getModel().isSoftDelete).to.be.true;
+    });
+  });
 });

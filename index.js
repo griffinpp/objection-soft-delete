@@ -65,6 +65,10 @@ module.exports = (incomingOptions) => {
           },
         });
       }
+
+      static get isSoftDelete() {
+        return true;
+      }
     };
   };
 };
